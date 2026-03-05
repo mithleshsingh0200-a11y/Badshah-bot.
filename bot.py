@@ -4,7 +4,7 @@ import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
-TOKEN = '8044105919:AAG889Nvestlcj_3m5MwDaYYc5oplzAHT28'
+TOKEN = '8044105919:AAGgf9AKQcLYil_XnlB03NPsylRVKz5bWDE'
 
 
 class BadshahEngine:
