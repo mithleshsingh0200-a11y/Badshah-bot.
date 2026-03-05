@@ -74,16 +74,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_repeating(engine.fetch_now, interval=15, first=1, chat_id=query.message.chat_id, name=str(query.message.chat_id))
 
 if __name__ == '__main__':
-    # Server ko alag thread mein chalayein
     Thread(target=run_server, daemon=True).start()
-    
-    # Bot Application setup
     app = ApplicationBuilder().token(TOKEN).build()
-    
-    # Handlers add karein
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button))
     
-    # Polling shuru karein (Ye line bina gap ke likhein)
-    print("Bot polling started...")
+    print("🚀 BOT POLLING STARTING...")
     app.run_polling(drop_pending_updates=True)
