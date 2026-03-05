@@ -84,6 +84,6 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button))
     
-    # Polling shuru karein (Ye line sabse zaroori hai)
+    # Polling shuru karein (Ye line bina gap ke likhein)
     print("Bot polling started...")
     app.run_polling(drop_pending_updates=True)
