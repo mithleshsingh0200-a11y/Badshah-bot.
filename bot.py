@@ -2,11 +2,27 @@ import random
 import asyncio
 import time
 import requests
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from threading import Thread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # CONFIG (Aapka Naya Token)
 TOKEN = '8044105919:AAHPya5KATSdB-NM7OFUvTidYGY3fdtJd70'
+
+# --- RENDER PORT BINDING FIX ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is Running")
+
+def run_health_check():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
+# -------------------------------
 
 class BadshahEngine:
     def __init__(self):
@@ -52,10 +68,9 @@ async def auto_check(context: ContextTypes.DEFAULT_TYPE):
         msg = f"👑 *BADSHAH KING AI V33*\n━━━━━━━━━━━━━━━━━━\n🕒 *MODE:* {mode_label}\n🆔 *NEXT PERIOD:* `{next_p}`\n📊 *PATTERN:* {pat}\n📏 *PREDICTION:* `{pred}`\n⚠️ *LEVEL:* {engine.current_lvl}\n━━━━━━━━━━━━━━━━━━"
         await context.bot.send_message(chat_id, msg, parse_mode='Markdown')
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in prediction: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 'callback_data' use karna hai, callback_query_data nahi
     keyboard = [
         [InlineKeyboardButton("🎮 30S MODE", callback_data='mode_30s')],
         [InlineKeyboardButton("🎮 1M MODE", callback_data='mode_1m')]
@@ -75,7 +90,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_repeating(auto_check, interval=interval, first=1, chat_id=query.message.chat_id, name=str(query.message.chat_id))
 
 if __name__ == '__main__':
+    # Start Health Check in Background for Render
+    Thread(target=run_health_check, daemon=True).start()
+    
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
+    print("Bot is starting...")
     app.run_polling()
