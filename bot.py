@@ -1,6 +1,5 @@
 import random
 import asyncio
-import time
 import requests
 import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -8,93 +7,60 @@ from threading import Thread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
-# CONFIG (Aapka Naya Token)
+# CONFIG
 TOKEN = '8044105919:AAHPya5KATSdB-NM7OFUvTidYGY3fdtJd70'
 
-# --- RENDER PORT BINDING FIX ---
-class HealthCheckHandler(BaseHTTPRequestHandler):
+# Render Health Check (Taaki bot band na ho)
+class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is Running")
+        self.send_response(200); self.end_headers(); self.wfile.write(b"Bot Live")
 
-def run_health_check():
+def run_server():
     port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    server.serve_forever()
-# -------------------------------
+    HTTPServer(('0.0.0.0', port), HealthCheck).serve_forever()
 
 class BadshahEngine:
     def __init__(self):
         self.last_period = None
-        self.current_lvl = 1
-        self.my_pred = None
-        self.mode = "WinGo_30S"
+        self.mode = "1" # 1 for 30s, 2 for 1m
 
-    def get_prediction(self):
-        patterns = ["DRAGON 🐉", "ZIG-ZAG 📈", "DOUBLE MIRROR 🪞", "CHIP MARKET 🤖"]
-        pat = random.choice(patterns)
-        res = random.choice(["BIG", "SMALL"])
-        if self.current_lvl == 2:
-            res = "SMALL" if res == "BIG" else "BIG"
-        self.my_pred = res
-        return pat, res
+    def get_data(self):
+        try:
+            # Naya Working API Link
+            url = f"https://api.9987up.com/api/web/game/v1/wingo/last-result?gameId={self.mode}"
+            data = requests.get(url).json()['data']
+            return data['issueNumber'], int(data['number'])
+        except: return None, None
 
 engine = BadshahEngine()
 
 async def auto_check(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
-    try:
-        url = f"https://draw.ar-lottery01.com/WinGo/{engine.mode}/GetHistoryIssuePage.json"
-        response = requests.get(url).json()
-        latest_data = response['data']['list'][0]
-        curr_period = latest_data['issueNumber']
-        actual_num = int(latest_data['number'])
-        actual_res = "BIG" if actual_num >= 5 else "SMALL"
-
-        if engine.last_period and curr_period != engine.last_period:
-            if engine.my_pred == actual_res:
-                engine.current_lvl = 1
-                await context.bot.send_message(chat_id, "💰 **WINNING!!** 💰\n✅ **WINNING SECURED!** 🤑")
-            else:
-                engine.current_lvl = 2
-                await context.bot.send_message(chat_id, "🔻 **LOSS DETECTED** 🔻\n⚠️ **LEVEL 2 RECOVERY START!** 📉")
-
-        next_p = str(int(curr_period) + 1)
-        pat, pred = engine.get_prediction()
-        engine.last_period = next_p
+    period, num = engine.get_data()
+    
+    if period and period != engine.last_period:
+        engine.last_period = period
+        next_p = str(int(period) + 1)
+        res = "BIG 🔴" if random.random() > 0.5 else "SMALL 🟢"
         
-        mode_label = "30S" if "30S" in engine.mode else "1M"
-        msg = f"👑 *BADSHAH KING AI V33*\n━━━━━━━━━━━━━━━━━━\n🕒 *MODE:* {mode_label}\n🆔 *NEXT PERIOD:* `{next_p}`\n📊 *PATTERN:* {pat}\n📏 *PREDICTION:* `{pred}`\n⚠️ *LEVEL:* {engine.current_lvl}\n━━━━━━━━━━━━━━━━━━"
+        msg = f"👑 *BADSHAH PREDICTION*\n━━━━━━━━━━━━━━\n🆔 *NEXT:* `{next_p}`\n📊 *RESULT:* `{res}`\n━━━━━━━━━━━━━━"
         await context.bot.send_message(chat_id, msg, parse_mode='Markdown')
-    except Exception as e:
-        print(f"Error in prediction: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🎮 30S MODE", callback_data='mode_30s')],
-        [InlineKeyboardButton("🎮 1M MODE", callback_data='mode_1m')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("👑 *WELCOME TO BADSHAH KING AI*\n\nNiche diye gaye buttons se apna game mode chunein:", 
-                                  parse_mode='Markdown', reply_markup=reply_markup)
+    kb = [[InlineKeyboardButton("🎮 30S MODE", callback_data='1')]]
+    await update.message.reply_text("✅ *BADSHAH AI ACTIVE*\nMode chunein:", 
+                                  parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(kb))
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    engine.mode = "WinGo_30S" if query.data == 'mode_30s' else "WinGo_1M"
-    interval = 35 if query.data == 'mode_30s' else 65
-    await query.edit_message_text(f"✅ **{engine.mode.replace('_', ' ')} SELECTED**\n🚀 Automatic prediction shuru ho rahi hai...")
-    for job in context.job_queue.get_jobs_by_name(str(query.message.chat_id)):
-        job.schedule_removal()
-    context.job_queue.run_repeating(auto_check, interval=interval, first=1, chat_id=query.message.chat_id, name=str(query.message.chat_id))
+    engine.mode = query.data
+    await query.edit_message_text("🚀 *PREDICTION STARTING...*\nAgli prediction 30s mein aayegi.")
+    context.job_queue.run_repeating(auto_check, interval=30, first=1, chat_id=query.message.chat_id)
 
 if __name__ == '__main__':
-    # Start Health Check in Background for Render
-    Thread(target=run_health_check, daemon=True).start()
-    
+    Thread(target=run_server, daemon=True).start()
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    print("Bot is starting...")
+    app.add_handler(CallbackQueryHandler(handle_button))
     app.run_polling()
