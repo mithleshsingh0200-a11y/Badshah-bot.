@@ -8,7 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # --- CONFIG (Aapka Token) ---
-TOKEN = '8044105919:AAHPya5KATSdB-NM7OFUvTidYGY3fdtJd70'
+TOKEN = '8044105919:AAEq2H7ZVtIxQ3nRN_Gro5xvGzsWTXciRtc'
 
 # Render Health Check (Isse bot hamesha 'Live' rahega)
 class HealthCheck(BaseHTTPRequestHandler):
