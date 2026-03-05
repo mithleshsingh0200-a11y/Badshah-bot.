@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # CONFIG
-TOKEN = '8044105919:AAGuInY-tSt-zvRtYHnCoAg-FnuYhpxLhiI'
+TOKEN = '8044105919:AAHPya5KATSdB-NM7OFUvTidYGY3fdtJd70'
 
 class BadshahEngine:
     def __init__(self):
