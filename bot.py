@@ -1,23 +1,21 @@
-import random
 import asyncio
 import os
+import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
-# Render ki Environment settings se token uthayega
+# Render ki settings se token lega
 TOKEN = os.environ.get('BOT_TOKEN')
 
-# --- AAPKA HTML HEALTH CHECK SERVER ---
+# --- HEALTH CHECK SERVER (Render ko Live rakhne ke liye) ---
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        # HTML Response jo Render ko 'Live' dikhayega
-        html = "<html><body><h1>Bot Status: Active</h1></body></html>"
-        self.wfile.write(bytes(html, "utf8"))
+        self.wfile.write(bytes("<html><body><h1>Badshah Bot is Online!</h1></body></html>", "utf8"))
     def do_HEAD(self):
         self.send_response(200)
         self.end_headers()
@@ -27,34 +25,53 @@ def run_server():
     server = HTTPServer(('0.0.0.0', port), HealthCheck)
     server.serve_forever()
 
-# Bot Logic
+# --- PREDICTION LOGIC ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("91CLUB 1 MIN", callback_data='91CLUB_1MIN')]]
+    keyboard = [[InlineKeyboardButton("🎯 91CLUB 1 MIN", callback_data='predict')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("🔥 **BADSHAH BOT READY**", reply_markup=reply_markup)
+    await update.message.reply_text("🔥 **WELCOME TO BADSHAH PREDICTOR**\n\nClick below for 1-minute prediction.", reply_markup=reply_markup)
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == 'predict':
+        msg = await query.edit_message_text("⏳ **ANALYZING NEXT PERIOD...**")
+        await asyncio.sleep(2) # Thoda wait dikhane ke liye
+        
+        result = random.choice(["BIG 🟢", "SMALL 🔴"])
+        number = random.choice([0,1,2,3,4,5,6,7,8,9])
+        
+        prediction_text = (
+            f"✅ **PREDICTION READY**\n\n"
+            f"📊 **Result:** {result}\n"
+            f"🔢 **Number:** {number}\n"
+            f"⏳ **Next Prediction in:** 30 seconds"
+        )
+        await msg.edit_text(prediction_text)
+        
+        # 30-second ka timer
+        await asyncio.sleep(30)
+        
+        keyboard = [[InlineKeyboardButton("🎯 GET NEXT PREDICTION", callback_data='predict')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.reply_text("✅ **TIMER OVER!** You can get new prediction now.", reply_markup=reply_markup)
 
 async def main():
-    # Rocket message logs mein sabse pehle
-    print("🚀 BOT POLLING STARTING...")
+    print("🚀 BOT POLLING STARTING...") #
+    Thread(target=run_server, daemon=True).start() #
     
-    # HTML Server start
-    Thread(target=run_server, daemon=True).start()
-
-    # Naya tarika jo 'RuntimeError' ko theek karega
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
 
     async with app:
         await app.initialize()
         await app.start()
-        print("✅ Bot is fully online!")
+        # Conflict error ko khatam karne ke liye
         await app.updater.start_polling(drop_pending_updates=True)
-        # Bot ko zinda rakhne ke liye infinite loop
         while True:
             await asyncio.sleep(3600)
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    asyncio.run(main()) #
