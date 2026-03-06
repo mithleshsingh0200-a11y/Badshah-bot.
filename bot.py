@@ -78,6 +78,5 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button))
-    
     print("🚀 BOT POLLING STARTING...")
     app.run_polling(drop_pending_updates=True)
