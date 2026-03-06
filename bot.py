@@ -7,7 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # --- APKA NAYA TOKEN ---
-TOKEN = '8044105919:AAERJW90-4rMpQAfdjuF-kTVCFu57Tjaxqw'
+TOKEN = '8044105919:AAHiLlBHE-GCJURhDu1KZ1Mqxv8q9-8OXhY'
 
 # Render ke liye Health Check Server
 class HealthCheck(BaseHTTPRequestHandler):
