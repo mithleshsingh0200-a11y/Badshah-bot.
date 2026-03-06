@@ -8,7 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # --- FINAL UPDATED TOKEN ---
-TOKEN = '8044105919:AAFLYGZhW1ItYqXkEHHAnFPpMta4cOgPZZM'
+TOKEN = '8044105919:AAGKKEym4lhb-42OUR4dXlj1ref1j60O8Qg'
 
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
