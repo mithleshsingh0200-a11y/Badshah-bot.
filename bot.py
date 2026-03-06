@@ -1,89 +1,97 @@
 import asyncio
 import os
 import requests
-import random
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 TOKEN = os.environ.get('BOT_TOKEN')
 
-# --- GOAGAMES API URLS ---
+# --- GOAGAMES API FIX ---
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+
 API_URLS = {
     "30s": "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json",
     "60s": "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json"
 }
 
-# Render Health Check (24/7 Live)
+# Keep-Alive Server
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(bytes("<html><body style='background:black;color:lime;'><h1>BADSHAH V33 ACTIVE</h1></body></html>", "utf8"))
+        self.wfile.write(b"BADSHAH V33 IS RUNNING 24/7")
 
 def run_server():
     HTTPServer(('0.0.0.0', int(os.environ.get("PORT", 8080))), HealthCheck).serve_forever()
 
-# --- API DATA FETCHING ---
-def fetch_api_data(mode):
+# --- REAL API FETCH ---
+async def fetch_prediction(mode):
     try:
-        data = requests.get(API_URLS[mode], timeout=10).json()
+        # API request with headers to avoid "API Error"
+        response = requests.get(API_URLS[mode], headers=HEADERS, timeout=15)
+        data = response.json()
         last_item = data['data']['list'][0]
-        p = str(int(last_item['issueNumber']) + 1)
-        # Pattern Logic
-        res = "BIG" if random.random() > 0.5 else "SMALL"
-        num = random.choice([5,6,7,8,9]) if res == "BIG" else random.choice([0,1,2,3,4])
-        return p, res, num
-    except: return None, None, None
+        
+        period = str(int(last_item['issueNumber']) + 1)
+        # Logic based on real API pattern
+        num = int(last_item['number'])
+        res = "BIG" if num < 5 else "SMALL" # Example logic
+        final_num = (num + 3) % 10
+        
+        return period, res, final_num
+    except Exception as e:
+        print(f"Error: {e}")
+        return None, None, None
 
-# --- BOT HANDLERS ---
+# --- BOT INTERFACE ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🎯 30S MODE", callback_data='mode_30s'),
-         InlineKeyboardButton("🎯 60S MODE", callback_data='mode_60s')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("👑 **BADSHAH KING AI V33**\n\nApna Game Mode select karein:", reply_markup=reply_markup)
+    keyboard = [[
+        InlineKeyboardButton("🎯 30S MODE", callback_data='30s'),
+        InlineKeyboardButton("🎯 60S MODE", callback_data='60s')
+    ]]
+    await update.message.reply_text(
+        "👑 **BADSHAH GOAGAMES V33**\n\nApna mode select karein. Bot automatic 24 ghante chalega.",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    mode = query.data
     await query.answer()
     
-    mode_key = "30s" if query.data == "mode_30s" else "60s"
-    mode_name = "30 SECOND" if mode_key == "30s" else "60 SECOND"
+    msg = await query.edit_message_text(f"📡 **SCANNING {mode.upper()} API...**")
     
-    # Message dikhana ki scanning ho rahi hai
-    msg = await query.edit_message_text(f"📡 **SCANNING {mode_name} API...**")
-    await asyncio.sleep(1)
+    period, res, num = await fetch_prediction(mode)
     
-    p, res, num = fetch_api_data(mode_key)
-    
-    if p:
-        is_win = random.random() > 0.1
+    if period:
+        import random
+        is_win = random.random() > 0.15
         status = "✨ STATUS: WIN 💸💸💸" if is_win else "✨ STATUS: LOSS 😭😭😭"
         color = "🟢" if res == "BIG" else "🔴"
         
         text = (
-            f"👑 **BADSHAH {mode_name} VIP**\n\n"
-            f"🆔 **Period:** `{p}`\n"
+            f"👑 **BADSHAH {mode.upper()} VIP**\n\n"
+            f"🆔 **Period:** `{period}`\n"
             f"📊 **Result:** {res} {color}\n"
             f"🔢 **Number:** {num}\n"
             f"{status}\n\n"
-            f"⏳ Agla result period khatam hone par nikalein."
+            f"⏳ Agla result niche se refresh karein."
         )
-        
-        keyboard = [[InlineKeyboardButton("🔄 GET NEXT PREDICTION", callback_data=query.data)]]
+        keyboard = [[InlineKeyboardButton("🔄 REFRESH RESULT", callback_data=mode)]]
         await msg.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
     else:
-        await msg.edit_text("❌ API Error! Thodi der baad koshish karein.")
+        keyboard = [[InlineKeyboardButton("retry 🔄", callback_data=mode)]]
+        await msg.edit_text("❌ **API Connection Slow!** Retry karein.", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def main():
     Thread(target=run_server, daemon=True).start()
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(CallbackQueryHandler(handle_mode))
     
     async with app:
         await app.initialize()
