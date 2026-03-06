@@ -7,7 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 # --- APKA NAYA TOKEN ---
-TOKEN = '8044105919:AAESO4-EEoqWVAoOEfnd5pQoWldEKAU6NSk'
+TOKEN = os.environ.get('BOT_TOKEN')
 
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
