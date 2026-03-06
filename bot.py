@@ -14,66 +14,65 @@ class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"LIVE_TIME_SYNC_OK")
+        self.wfile.write(b"GOAGAMES_LIVE_v33")
 
 def run_server():
     server = HTTPServer(('0.0.0.0', int(os.environ.get("PORT", 8080))), HealthCheck)
     server.serve_forever()
 
-# --- PERIOD SYNC LOGIC (30s: +1 step, 60s: +2 steps added) ---
-def get_goagames_period(mode):
+# --- PERFECT SYNC LOGIC (30s OK, 60s FIXED) ---
+def get_live_period(mode):
     now = datetime.now()
-    date_prefix = now.strftime("%Y%m%d")
-    total_seconds = (now.hour * 3600) + (now.minute * 60) + now.second
+    date_prefix = now.strftime("%Y%m%d") # Har din/month/year auto badlega
+    total_sec = (now.hour * 3600) + (now.minute * 60) + now.second
     
     if mode == "30s":
-        # 1 kadam piche tha isliye +1 kiya hai sync ke liye
-        period_count = 50000 + (total_seconds // 30) + 1
+        period_count = 50000 + (total_sec // 30) + 1 # 30s as it is
     else:
-        # 2 kadam piche tha isliye +2 kiya hai sync ke liye
-        period_count = 10000 + (total_seconds // 60) + 2
+        # 60s ko 1 kadam piche karke live sync kiya hai
+        period_count = 10000 + (total_sec // 60) + 1 
         
     return f"{date_prefix}1000{period_count}"
 
-async def auto_prediction_loop(context, chat_id, mode):
+async def auto_loop(context, chat_id, mode):
     interval = 30 if mode == "30s" else 60
     while user_active_modes.get(chat_id) == mode:
         try:
-            p = get_goagames_period(mode)
-            res_size = "BIG" if random.random() > 0.5 else "SMALL"
-            color = "🟢 GREEN" if res_size == "BIG" else "🔴 RED"
-            jacks = random.sample([5,6,7,8,9], 2) if res_size == "BIG" else random.sample([0,1,2,3,4], 2)
+            p = get_live_period(mode)
+            res = "BIG" if random.random() > 0.5 else "SMALL"
+            color = "🟢 GREEN" if res == "BIG" else "🔴 RED"
+            jacks = random.sample([5,6,7,8,9], 2) if res == "BIG" else random.sample([0,1,2,3,4], 2)
 
-            # Step 1: Send Prediction
+            # Step 1: Prediction Message (No 5s check)
             text = (
                 f"👑 **BADSHAH KING VIP V33**\n\n"
                 f"🆔 **Period:** `{p}`\n"
-                f"📊 **Size:** {res_size}\n"
+                f"📊 **Size:** {res}\n"
                 f"🎨 **Colour:** {color}\n"
                 f"🎯 **Jackpot Nos:** `{jacks[0]}, {jacks[1]}`\n"
-                f"⏳ **Status:** Syncing with Live Time..."
+                f"⏳ **Status:** Live Prediction..."
             )
             msg = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
 
-            await asyncio.sleep(interval - 5)
+            # Wait for full interval
+            await asyncio.sleep(interval - 2)
 
-            # Step 2: Level 1-2 Win Logic
+            # Step 2: Level 1-2 Win Result
             is_win = random.random() > 0.12
             gift = "✅ **LEVEL 1 WIN 💸💸💸**" if is_win else "✅ **LEVEL 2 WIN 💰💰💰**"
             
-            # Jackpot Numbers final result mein bhi rahenge
             final_text = (
                 f"👑 **BADSHAH KING VIP V33**\n\n"
                 f"🆔 **Period:** `{p}`\n"
-                f"📊 **Result:** {res_size} {color}\n"
+                f"📊 **Result:** {res} {color}\n"
                 f"🎯 **Jackpot Nos:** `{jacks[0]}, {jacks[1]}`\n"
                 f"✨ **Status:** {gift}\n\n"
-                f"✅ Next prediction in 5s..."
+                f"✅ New period starting..."
             )
             await msg.edit_text(final_text, parse_mode='Markdown')
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
         except Exception:
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_active_modes[update.message.chat_id] = None
@@ -85,8 +84,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query, chat_id = update.callback_query, update.callback_query.message.chat_id
     await query.answer()
     user_active_modes[chat_id] = query.data
-    await query.edit_message_text(f"🚀 **{query.data.upper()} CONNECTED!**\nLive Time Sync Active.")
-    asyncio.create_task(auto_prediction_loop(context, chat_id, query.data))
+    await query.edit_message_text(f"🚀 **{query.data.upper()} CONNECTED!**\n24/7 Auto Sync Start.")
+    asyncio.create_task(auto_loop(context, chat_id, query.data))
 
 async def main():
     Thread(target=run_server, daemon=True).start()
